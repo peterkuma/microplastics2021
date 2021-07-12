@@ -1,0 +1,63 @@
+*BLOCK: TYPE =    0: SUBTYPE =    0: VERSION =    2
+Summary of spectral data.
+Number of spectral bands =     9
+Total number of gaseous absorbers =    12
+Maximum number of k-terms in a band =    17
+Total number of aerosols =    26
+List of indexing numbers and absorbers.
+Index       Absorber(identifier and name)
+    1           1       Water Vapour        
+    2           2       Carbon Dioxide      
+    3           3       Ozone               
+    4           4       Dinitrogen Oxide    
+    5           6       Methane             
+    6           9       Sulphur dioxide     
+    7          14       CFC11               
+    8          15       CFC12               
+    9          16       CFC113              
+   10          17       HCFC22              
+   11          19       HFC134A             
+   12          25       Carbonyl sulphide   
+List of indexing numbers of aerosols.
+Index       Aerosol(type number and name)
+    1           1       Water soluble       
+    2           2       Dust-like           
+    3           3       Oceanic             
+    4           4       Soot                
+    5           6       Sulphuric Acid      
+    6          31       Two-bin Dust Div 1  
+    7          32       Two-bin Dust Div 2  
+    8          17       Dust Division 1     
+    9          18       Dust Division 2     
+   10          19       Dust Division 3     
+   11          20       Dust Division 4     
+   12          21       Dust Division 5     
+   13          22       Dust Division 6     
+   14          12       Fresh Soot          
+   15          13       Aged Soot           
+   16          23       Biomass Division 1  
+   17          24       Biomass Division 2  
+   18          10       Accum. Sulphate     
+   19          11       Aitken Sulphate     
+   20          15       NaCl film mode      
+   21          16       NaCl jet mode       
+   22          25       Biogenic            
+   23          26       Fresh fossil-fuel OC
+   24          27       Aged fossil-fuel OC 
+   25          28       Delta aerosol       
+   26          30       Ammonium nitrate    
+*END
+*BLOCK: TYPE =    1: SUBTYPE =    0: VERSION =    0
+Specification of spectral intervals
+Limits of spectral intervals (wavelengths in m.)
+Band        Lower limit         Upper limit
+    1        2.500000000E-05     1.000000000E-02
+    2        1.818181818E-05     2.500000000E-05
+    3        1.250000000E-05     1.818181818E-05
+    4        1.333333333E-05     1.694915254E-05
+    5        8.333333333E-06     1.250000000E-05
+    6        8.928571429E-06     1.010101010E-05
+    7        7.518796992E-06     8.333333333E-06
+    8        6.666666667E-06     7.518796992E-06
+    9        3.338898164E-06     6.666666667E-06
+*END

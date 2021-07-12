@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+'''Plot MP concentration map.
+
+Usage: plot_map <output>
+
+Arguments:
+
+- output: Output plot (PDF).
+
+Examples:
+
+Plot MP concentration map in "plot/Microplastics concentration map.pdf".
+
+bin/plot_map 'plot/Microplastics concentration map.pdf'
+
+Created: Mon Jun 21 10:04:13 2021
+Author: Laura Revell
+'''
+
+import sys
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+import seaborn as sns #see http://seaborn.pydata.org/tutorial/color_palettes.html
+
+if len(sys.argv) != 2:
+    sys.stderr.write(sys.modules[__name__].__doc__)
+    sys.exit(1)
+
+output = sys.argv[1]
+
+my_cmap = sns.color_palette("colorblind",6)
+plt.rcParams.update({'font.size': 14})
+
+# data points for location of circles
+liu2019apel_lat = 12; liu2019apel_lon = 142
+liu2020_lat = 10; liu2020_lon = 110
+liu2019acoa_lat = 28; liu2019acoa_lon = 123
+dris2017_lat = 48.5; dris2017_lon = 2.3
+liu2019b_lat = 31.2; liu2019b_lon = 121.5
+allen2020on_lat = 44.1; allen2020on_lon = -1.17
+allen2020off_lat = 44.1; allen2020off_lon = -1.17
+syafei2019_lat = -7.2; syafei2019_lon = 112.4
+levermore2020_lat = 51.5; levermore2020_lon = 0.1
+akhbarizadeh_lat = 29.0; akhbarizadeh_lon = 50.8
+gaston_lat = 34.1; gaston_lon = 241
+li_lat = 39.9; li_lon = 116.4
+
+FL400_radius = 6.98
+
+fig = plt.figure(figsize=(12,12))
+ax = plt.subplot2grid(shape=(6,1),loc=(0,0),colspan=1,rowspan=3)
+m = Basemap(projection='cyl',llcrnrlat=-20,urcrnrlat=60,llcrnrlon=-20,urcrnrlon=270,resolution='c')
+radiusm = FL400_radius*.3
+m.drawcoastlines()
+m.fillcontinents(color='whitesmoke', lake_color='whitesmoke')
+
+patch0 = [ plt.plot([],[], marker="o", ms=10, ls="", mec='white', color='white',
+                    label='Location Concentration (MP m$^{-3}$) Analytical method') ]
+
+circle1 = plt.Circle(xy=m(li_lon,li_lat), radius=radiusm, edgecolor=my_cmap[0], facecolor=my_cmap[0],zorder=10,label='test')
+ax.add_artist(circle1)
+patch1 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[0], color=my_cmap[0],
+                    label='Beijing, China$^{13}$ 5650 SEM-EDX') ]
+
+circle2 = plt.Circle(xy=m(levermore2020_lon,levermore2020_lat), radius=radiusm,edgecolor=my_cmap[1], facecolor=my_cmap[1], zorder=10)
+ax.add_artist(circle2)  #10^3
+patch2 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[1], color=my_cmap[1],
+                    label='London, UK$^{12}$ 2502 Raman spectral imaging') ]
+
+circle3 = plt.Circle(xy=m(syafei2019_lon,syafei2019_lat), radius=radiusm,edgecolor=my_cmap[5], facecolor=my_cmap[5], zorder=10)
+ax.add_artist(circle3)  #10^2
+patch3 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[5], color=my_cmap[5],
+                    label='Surabaya, Indonesia$^{20}$ 109 FTIR') ]
+
+circle4 = plt.Circle(xy=m(akhbarizadeh_lon,akhbarizadeh_lat), radius=radiusm, edgecolor=my_cmap[3],facecolor=my_cmap[3],zorder=10)
+ax.add_artist(circle4)
+patch4 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[3], color=my_cmap[3],
+                    label='Bushehr Port, Iran (dusty days)$^{1}$ 10.3 µRaman') ]
+
+circle5 = plt.Circle(xy=m(allen2020off_lon,allen2020off_lat), radius=radiusm,edgecolor=my_cmap[4], facecolor=my_cmap[4], zorder=10)
+ax.add_artist(circle5)  #10^1
+patch5 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[4], color=my_cmap[4],
+                    label='French Atlantic Coast (offshore wind)$^{3}$ 9.6 µRaman') ]
+
+circle6 = plt.Circle(xy=m(gaston_lon,gaston_lat), radius=radiusm, edgecolor=my_cmap[2],facecolor=my_cmap[2],zorder=10)
+ax.add_artist(circle6)
+patch6 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[2], color=my_cmap[2],
+                    label='Southern California$^{9}$ 6.2 µRaman and µFTIR') ]
+
+circle7 = plt.Circle(xy=m(allen2020on_lon,allen2020on_lat), radius=radiusm,edgecolor=my_cmap[4], facecolor=my_cmap[4], zorder=10)
+ax.add_artist(circle7)  #10^0
+patch7 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[4], color=my_cmap[4],
+                    label='French Atlantic Coast (onshore wind)$^{3}$ 2.9 µRaman') ]
+
+circle8 = plt.Circle(xy=m(akhbarizadeh_lon,akhbarizadeh_lat), radius=radiusm, edgecolor=my_cmap[3],facecolor=my_cmap[3],zorder=10)
+ax.add_artist(circle8)
+patch8 = [ plt.plot([],[], marker="o", ms=10, ls="", mec=my_cmap[3], color=my_cmap[3],
+                    label='Bushehr Port, Iran (normal days)$^{1}$ 2.1 µRaman') ]
+
+circle9 = plt.Circle(xy=m(liu2019b_lon,liu2019b_lat), radius=radiusm,edgecolor="black", facecolor=my_cmap[1], zorder=10) #colour
+ax.add_artist(circle9)  #10^0
+patch9 = [ plt.plot([],[], marker="o", ms=10, ls="", mec='k', color=my_cmap[1],
+                    label='Shanghai, China$^{14}$ 1.42 µFTIR') ]
+
+circle10 = plt.Circle(xy=m(dris2017_lon,dris2017_lat), radius=radiusm,edgecolor="black", facecolor=my_cmap[0], zorder=10)
+ax.add_artist(circle10)  #10^0
+patch10 = [ plt.plot([],[], marker="o", ms=10, ls="", mec='k', color=my_cmap[0],
+                     label='Paris, France$^{8}$ 0.9 µFTIR') ]
+
+circle11 = plt.Circle(xy=m(liu2019acoa_lon,liu2019acoa_lat), radius=radiusm,edgecolor="black", facecolor=my_cmap[4], zorder=10)
+ax.add_artist(circle11)  #10^-1
+patch11 = [ plt.plot([],[], marker="o", ms=10, ls="", mec='k', color=my_cmap[4],
+                     label='East China Sea$^{15}$ 0.13 µFTIR')]
+
+circle12 = plt.Circle(xy=m(liu2020_lon,liu2020_lat), radius=radiusm,edgecolor="black", facecolor=my_cmap[3], zorder=10)
+ax.add_artist(circle12)  #10^-1
+patch12 = [ plt.plot([],[], marker="o", ms=10, ls="", mec='k', color=my_cmap[3],
+                     label='South China Sea and West Pacific Ocean$^{17}$ 0.11 µFTIR') ]
+
+circle13 = plt.Circle(xy=m(liu2019apel_lon,liu2019apel_lat), radius=radiusm,edgecolor='k', facecolor=my_cmap[5], zorder=10)
+ax.add_artist(circle13)  #10^-2
+patch13 = [ plt.plot([],[], marker="o", ms=10, ls="", mec="k", color=my_cmap[5],
+                     label='West Pacific Ocean$^{15}$ 0.01 µFTIR') ]
+
+plt.legend(loc='lower center', bbox_to_anchor=(0.3, -1.4),
+          ncol=1, frameon=False, shadow=False, labelspacing=.5, fontsize=10)
+
+plt.savefig(output, bbox_inches='tight')

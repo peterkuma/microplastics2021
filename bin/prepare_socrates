@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Prepare SOCRATES aerosol file. Spectra blocks for shortwave and longwave
+and printed to the standard output.
+
+Usage: prepare_socrates <opt> <levels> <output>
+
+Arguments:
+
+- opt: Optical properties file (py).
+- levels: Atmosphere levels file (NetCDF). This file should contain variables
+	zhalf, phalf and ta.
+- output: Output file - common for shortwave and longwave (NetCDF).
+
+Examples:
+
+Prepare SOCRATES profiles for CIRC cases. The standard output blocks should be
+inserted in the data/circ/common/sp_{sw,lw}_ga7_<type> spectral files. These
+should be otherwise the same as the original sp_{sw,lw}_ga7 files.
+
+for i in {1..7}; do bin/prepare_socrates data/ea/fragments.py data/circ/case"$i"/level_input_case"$i".nc data/circ/case"$i"/case"$i".fragments.nc; done
+for i in {1..7}; do bin/prepare_socrates data/ea/fibers.py data/circ/case"$i"/level_input_case"$i".nc data/circ/case"$i"/case"$i".fibers.nc; done
+for i in {1..7}; do bin/prepare_socrates data/ea/fibers_and_fragments.py data/circ/case"$i"/level_input_case"$i".nc data/circ/case"$i"/case"$i".fibers_and_fragments.nc; done
+for i in {1..7}; do bin/prepare_socrates data/ea/fibers_and_fragments_2km.py data/circ/case"$i"/level_input_case"$i".nc data/circ/case"$i"/case"$i".fibers_and_fragments_2km.nc; done
+"""
+
+import sys
+import importlib
+import numpy as np
+import ds_format as ds
+
+R_d = 287 # Gas constant for dry air (J.K-1.kg-1).
+
+META = {
+    "mp": {
+        ".dims": ["plev","lat", "lon"],
+        "title": "Microplastic MMR",
+        "units": "None"
+    },
+    "lat": {
+        ".dims": ["lat"],
+        "title": "LATITUDE",
+        "units": "degree"
+    },
+    "lon": {
+        ".dims": ["lon"],
+        "title": "LONGITUDE",
+        "units": "degree"
+    },
+    "plev": {
+        ".dims": ["plev"],
+        "title": "PRESSURE",
+        "units": "Pa"
+    }
+}
+
+# The following parameters are not particularly important becasue they
+# get renormalized with the mass mixing ratio.
+RHO = 1000. # Material density (kg.m-3).
+RADIUS = 15e-6 # Single particle radius (m).
+WEIGHT = 4./3.*np.pi*RADIUS**3.*RHO # Single particle weight (kg).
+
+if __name__ == '__main__':
+	if len(sys.argv) != 4:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+
+	opt_file = sys.argv[1]
+	levels_file = sys.argv[2]
+	output = sys.argv[3]
+
+	levels = ds.read(levels_file)
+	phalf = levels['phalf']
+	pfull = 0.5*(phalf[1:] + phalf[:-1])
+	zhalf = levels['zhalf']
+	zfull = 0.5*(zhalf[1:] + zhalf[:-1])
+	ta_half = levels['ta']
+	ta = 0.5*(ta_half[1:] + ta_half[:-1])
+	rho = pfull/ta/R_d
+
+	opt_spec = importlib.util.spec_from_file_location('opt', opt_file)
+	opt = importlib.util.module_from_spec(opt_spec)
+	opt_spec.loader.exec_module(opt)
+
+	h = zfull - zfull[0]
+	fract = opt.FRACT_TOP**(h/opt.H_TOP)
+	fract[zfull > opt.H_TOP] = 0
+
+	for title, abs_, sca, asy in [
+		['Shortwave block:', opt.SW_ABS, opt.SW_SCA, opt.SW_ASY],
+		['Longwave block:', opt.LW_ABS, opt.LW_SCA, opt.LW_ASY]
+	]:
+		print(title)
+		print()
+		print('''\
+*BLOCK: TYPE =   11: SUBTYPE =    0: VERSION =    2
+Scattering parameters for dry aerosols.
+Index of species =    27  Microplastics
+Number of terms in phase function =     1
+Band        Absorption          Scattering          Phase fnc
+            (m2.kg-1)           (m2.kg-1)''')
+		m = len(abs_)
+		for i in range(m):
+			print('    %d     %1.9E     %1.9E     %1.9E' % (
+				i + 1, abs_[i]/WEIGHT, sca[i]/WEIGHT, asy[i]))
+		print('*END')
+		print()
+
+	n = len(pfull)
+	mp = np.ones(n)*opt.NUMBER_DENSITY*fract
+
+	d = {
+		'lat': np.array([0.]),
+		'lon': np.array([0.]),
+		'plev': pfull[::-1],
+		'mp': (mp*WEIGHT/rho)[::-1].reshape((n, 1, 1)),
+		'.': META,
+	}
+	ds.write(output, d)

@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Calculate radiative effect.
+
+Usage: calc_rad_eff <input1> <input2> <output> <plot>
+
+Arguments:
+
+- input1: HadGEM output 1 (directory with NetCDF files).
+- input2: HadGEM output 2 (directory with NetCDF files).
+- output: Output file (NetCDF)
+- plot: Output plot file prefix.
+"""
+
+import sys
+import os
+import numpy as np
+import ds_format as ds
+import matplotlib.pyplot as plt
+
+VARS = {
+	'STASH_m01s01i205': 'rsut',
+	'STASH_m01s02i205': 'rlut',
+	'STASH_m01s01i209': 'rsut_cs2',
+	'STASH_m01s01i228': 'rsut_cs1',
+	'STASH_m01s02i206': 'rlut_cs2',
+	'STASH_m01s02i228': 'rlut_cs1',
+}
+
+META = { k: { '.dims': ['lat', 'lon'] } for k in VARS.values() }
+META['lat'] = { '.dims': ['lat'] }
+META['lon'] = { '.dims': ['lon'] }
+
+def gmean(x, lat, lon):
+	return np.average(
+		np.mean(x, axis=1),
+		weights=np.cos(lat/180.*np.pi)
+	)
+
+def gstdev(x, lat, lon):
+	m = gmean(x, lat, lon)
+	w = np.cos(lat/180.*np.pi)
+	w /= np.sum(w)
+	s = 0.
+	for i in range(len(lat)):
+		s += w[i]*np.sum((x[i,:] - m)**2.)
+	return np.sqrt(s/(len(lat)*len(lon)))
+
+if __name__ == '__main__':
+	if len(sys.argv) != 5:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+
+	input1 = sys.argv[1]
+	input2 = sys.argv[2]
+	output = sys.argv[3]
+	plot = sys.argv[4]
+
+	d = {}
+	n = 0
+	for name in sorted(os.listdir(input1)):
+		filename1 = os.path.join(input1, name)
+		filename2 = os.path.join(input2, name)
+		if not os.path.exists(filename2):
+			continue
+		#print('<- %s' % filename1)
+		d1 = ds.read(filename1)
+		#print('<- %s' % filename2)
+		d2 = ds.read(filename2)
+		for k, v in VARS.items():
+			ds.rename(d1, k, v)
+			ds.rename(d2, k, v)
+		lat = d1['latitude_t']
+		lon = d1['longitude_t']
+		d['lat'] = lat
+		d['lon'] = lon
+		for k in VARS.values():
+			if k not in d:
+				d[k] = 0.
+				d[k + '_g'] = []
+			d[k] += d1[k][0,:,:] - d2[k][0,:,:]
+			d[k + '_g'].append(
+				gmean(d1[k][0,:,:] - d2[k][0,:,:], lat, lon)
+			)
+		n += 1
+	for k in VARS.values():
+		d[k] /= n
+
+	for k in sorted(VARS.values()):
+		print('%s: mean = %f, stdev = %f (%f)' % (
+			k, gmean(d[k], lat, lon), np.std(d[k + '_g']),
+			gstdev(d[k], lat, lon)
+		))
+
+		plt.figure()
+		plt.hist(d[k + '_g'])
+		m = gmean(d[k], lat, lon)
+		s = np.std(d[k + '_g'])/np.sqrt(n)
+		plt.axvline(m, color='k')
+		plt.axvline(m - s, color='k', linestyle='dashed')
+		plt.axvline(m + s, color='k', linestyle='dashed')
+		#plt.savefig(plot + '_%s' % k, bbox_inches='tight')
+
+		del d[k + '_g']
+
+	d['.'] = META
+	#print('-> %s' % output)
+	ds.write(output, d)

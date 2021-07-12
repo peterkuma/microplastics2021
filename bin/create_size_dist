@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Create theoretical size distribution.
+
+Usage: create_size_dist <type> <p1> <p2> <output>
+
+Arguments:
+
+- type: Distribution type ("gamma").
+- p1: Parameter 1 (shape).
+- p2: Parameter 2 (scale in um).
+- output: Output file (NetCDF).
+
+Examples:
+
+Create size distribution for fibers, films and fragments.
+
+bin/create_size_dist gamma 2.5 250 plot/size_dist_theor/gamma_fibers.nc
+bin/create_size_dist gamma 4 30 plot/size_dist_theor/gamma_films.nc
+bin/create_size_dist gamma 2 15 plot/size_dist_theor/gamma_fragments.nc
+"""
+
+import sys
+import numpy as np
+from scipy.stats import gamma
+import ds_format as ds
+
+META = {
+	's': {
+		'.dims': ['s'],
+		'long_name': 'size',
+		'units': 'm',
+	},
+	's_bnds': {
+		'.dims': ['s_bnds'],
+		'long_name': 'size_bounds',
+		'units': 'm',
+	},
+	'n': {
+		'.dims': ['s'],
+		'long_name': 'number of particles',
+		'units': '1',
+	}
+}
+
+if __name__ == '__main__':
+	if len(sys.argv) != 5:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	type_ = sys.argv[1]
+	p1 = float(sys.argv[2])
+	p2 = float(sys.argv[3])*1e-6
+	output = sys.argv[4]
+
+	s_bnds = np.arange(0, 5, 0.001)*1e-6*1e3
+	s = 0.5*(s_bnds[1:] + s_bnds[:-1])
+
+	if type_ == 'gamma':
+		n = gamma.pdf(s/p2, p1)
+	else:
+		raise ValueError('%s: Distribution type not supported' % type_)
+
+	d = {
+		'n': n,
+		's': s,
+		's_bnds': s_bnds,
+		'.': META,
+	}
+
+	ds.write(output, d)

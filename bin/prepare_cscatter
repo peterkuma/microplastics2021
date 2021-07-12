@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Prepare input for Cscatter_average from a CSV file. The output is printed
+to the standard output.
+
+Usage: prepare_cscatter <input>
+
+Arguments:
+
+- input: Input file with absorption and scattering coefficients and asymmetry
+  factor per wavelength (CSV). The CSV file should contain a header line and
+  the following columns:
+
+  1. wavelength (m)
+  2. absorption coefficient (m^-1)
+  3. scattering coefficient (m^-1)
+  4. asymmetry factor (1)
+
+Examples:
+
+Prepare Cscatter_average input for fibers.
+
+bin/prepare_cscatter data/opt_prop_fibers/fibers.csv > data/cscatter/opt_prop_fibers
+"""
+
+import sys
+import csv
+
+if __name__ == '__main__':
+	if len(sys.argv) != 2:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+
+	input_ = sys.argv[1]
+
+	lam = []
+	cabs = []
+	csca = []
+	g = []
+
+	with open(input_) as f:
+		reader = csv.reader(f)
+		header = True
+		for r in reader:
+			if header:
+				header = False
+				continue
+			lam += [float(r[0])]
+			cabs += [float(r[1])]
+			csca += [float(r[2])]
+			g += [float(r[3])]
+
+	print('''
+*FILE TYPE =     6
+
+                Single scattering parameters.
+
+
+Scattering algorithm =     1   (Full Mie scattering calculation         )
+Scattering type      =     0   (Unassigned          )
+
+Number density   =
+Effective radius =
+Volume fraction  =
+
+    Wavelength (m)      Absorption (m-1)    Scattering (m-1)     Moments of pf''')
+
+	for i in range(len(lam)):
+		print('%20.9E%20.9E%20.9E%20.9E' % (lam[i], cabs[i], csca[i], g[i]))
+	print()

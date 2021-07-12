@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""Plot flux profiles of multiple CIRC cases.
+
+Usage: plot_profile_all <input>... <type> <output> <title>
+
+Arguments:
+
+- input: Input directory.
+- type: Profile type.
+- output: Output plot file (PDF).
+- title: Plot title.
+
+Examples:
+
+Plot profiles of CIRC cases for fragments.
+
+bin/plot_profile_all data/circ/case* fragments 'plot/CIRC fragments.pdf' 'Microplastic fragments: 100 MP m-3' > 'csv/CIRC fragments.csv'
+bin/plot_profile_all data/circ/case* fibers 'plot/CIRC fibers.pdf' 'Microplastic fibers: 100 MP m-3' > 'csv/CIRC fibers.csv'
+bin/plot_profile_all data/circ/case* fibers_and_fragments 'plot/CIRC fibers and fragments.pdf' 'Microplastics combined: 100 MP m-3' > 'csv/CIRC fibers and fragments.csv'
+bin/plot_profile_all data/circ/case* fibers_and_fragments_2km 'plot/CIRC fibers and fragments (2 km).pdf' 'Microplastics boundary layer: 100 MP m-3' > 'csv/CIRC fibers and fragments (2 km).csv'
+"""
+
+import sys
+import os
+import glob
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import pst
+import ds_format as ds
+import seaborn as sns
+
+mpl.rc('font', family='Public Sans')
+mpl.rc('axes', linewidth=0.3)
+mpl.rc('axes', grid=True)
+mpl.rc('lines', linewidth=1)
+mpl.rc('xtick.major', width=0.3)
+mpl.rc('ytick.major', width=0.3)
+mpl.rc('legend', framealpha=1)
+mpl.rc('legend', facecolor='#eeeeee')
+mpl.rc('legend', edgecolor='none')
+mpl.rc('legend', fancybox=False)
+mpl.rc('legend', fontsize=5.5)
+mpl.rc('grid', color='k')
+mpl.rc('grid', alpha=0.2)
+mpl.rc('grid', lw=0.1)
+
+cmap = sns.color_palette('colorblind', 8)
+
+VARS = [
+	[0, 'dflx', 'Downward diffuse flux', cmap[0]],
+	[0, 'uflx', 'Upward flux', cmap[1]],
+	[-1, 'sflx', 'Direct flux', 'none'],
+	[-1, 'nflx', 'Net flux', 'none'],
+	[-1, 'vflx', 'Total downward flux', 'none'],
+	[1, 'hrts', 'Heating rate', '#555555'],
+]
+
+def read(dirname, type_):
+	do = {}
+	do['dirname'] = dirname
+	for _, var, label, color in VARS:
+		name = 'case*_%s.%s.nc' % (type_, var)
+		res = glob.glob(os.path.join(dirname, name))
+		if len(res) == 0:
+			continue
+		filename = res[0]
+		print('<- ' + filename, file=sys.stderr)
+		d = ds.read(filename)
+		do['plev_' + var] = d['plev']
+		do[var] = d[var]
+	return do
+
+def plot(dd, dd_cnt, lw_sw, relative=False, legend=True):
+	def plot0(k):
+		handles = []
+		labels = []
+		for i in range(n):
+			for dx in [dd[i], dd_cnt[i]]:
+				is_cnt = np.any([dx is d for d in dd_cnt])
+				if is_cnt and relative: continue
+				linestyle = 'solid' if not is_cnt else 'dashed'
+				for type_, var, label, color in VARS:
+					if type_ != k:
+						continue
+					p, = plt.plot(
+						dx[var][:,0,0] if not relative \
+							else dx[var][:,0,0] - dd_cnt[i][var][:,0,0],
+						dx['plev_' + var]*1e-2,
+						color=color,
+						linestyle=linestyle,
+					)
+					if i == 0:
+						handles += [p]
+						labels += [label + (' (cnt)' if is_cnt else '')]
+		if relative:
+			dtoa = np.mean([
+				d['uflx'][0] - d_cnt['uflx'][0]
+				for d, d_cnt in zip(dd, dd_cnt)
+			])
+			plt.text(0.02, 0.975, 'Mean $\Delta$ TOA up flux = %.3f W m$^{-2}$' % dtoa,
+				transform=plt.gca().transAxes,
+				fontsize=7,
+				horizontalalignment='left',
+				verticalalignment='top',
+				bbox=dict(facecolor='#eeeeee', edgecolor='none'),
+			)
+		return handles, labels
+
+	lab = 'longwave' if lw_sw == 'lw' else 'shortwave'
+	labu = 'Longwave' if lw_sw == 'lw' else 'Shortwave'
+	n = len(dd)
+	handles1, labels1 = plot0(1)
+	if not relative:
+		plt.xlim(-5, 5)
+		plt.gca().set_xticks(np.arange(-5, 6, 2))
+		plt.xlabel(labu + ' heating rate (K day$^{-1}$)')
+	else:
+		plt.xlim(-0.05, 0.05)
+		plt.gca().set_xticks(np.arange(-0.05, 0.06, 0.025))
+		#plt.xlim(-0.005, 0.005)
+		#plt.gca().set_xticks(np.arange(-0.005, 0.006, 0.0025))
+		plt.xlabel('Relative ' + lab + ' heating rate (K day$^{-1}$)')
+	plt.ylabel('Pressure (hPa)')
+	plt.ylim(1000, 0)
+	plt.gca().set_yticks(np.arange(0, 1100, 200))
+	#plt.grid(False)
+	plt.twiny()
+	handles2, labels2 = plot0(0)
+	if not relative:
+		plt.xlim(0, 1000)
+		plt.gca().set_xticks(np.arange(0, 1100, 200))
+		xlab = plt.xlabel(labu + ' flux (W m$^{-2}$)')
+	else:
+		plt.xlim(-5, 5)
+		plt.gca().set_xticks(np.arange(-5, 6, 2.5))
+		#plt.xlim(-0.5, 0.5)
+		#plt.gca().set_xticks(np.arange(-0.5, 0.6, 0.25))
+		plt.axvline(x=0, lw=0.2, color='k')
+		plt.xlabel('Relative ' + lab + ' flux (W m$^{-2}$)')
+	if legend:
+		plt.legend(
+			handles=(handles1 + handles2),
+			labels=(labels1 + labels2),
+			loc=(0.66, 0.71),
+		)
+	plt.gca().xaxis.set_label_coords(0.5, 1.085)
+
+if __name__ == '__main__':
+	args, opts = pst.decode_argv(sys.argv, as_unicode=True)
+	if len(args) < 5:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = args[1:-3]
+	type_ = args[-3]
+	output = args[-2]
+	title = args[-1]
+
+	plt.figure(figsize=[8, 8])
+
+	dd_sw = []
+	dd_lw = []
+	dd_sw_cnt = []
+	dd_lw_cnt = []
+	for dirname in input_:
+		dd_sw += [read(dirname, 'sw_' + type_)]
+		dd_lw += [read(dirname, 'lw_' + type_)]
+		dd_sw_cnt += [read(dirname, 'sw_cnt')]
+		dd_lw_cnt += [read(dirname, 'lw_cnt')]
+
+	plt.subplot(2, 2, 1)
+	plot(dd_sw, dd_sw_cnt, 'sw', legend=True)
+	plt.subplot(2, 2, 2)
+	plot(dd_sw, dd_sw_cnt, 'sw', relative=True, legend=False)
+
+	plt.subplot(2, 2, 3)
+	plot(dd_lw, dd_lw_cnt, 'lw', legend=False)
+	plt.subplot(2, 2, 4)
+	plot(dd_lw, dd_lw_cnt, 'lw', relative=True, legend=False)
+
+	rf_sw = -np.mean([d['uflx'][0] - d_cnt['uflx'][0]
+		for d, d_cnt in zip(dd_sw, dd_sw_cnt)])
+	rf_lw = -np.mean([d['uflx'][0] - d_cnt['uflx'][0]
+		for d, d_cnt in zip(dd_lw, dd_lw_cnt)])
+	rf_net = rf_sw + rf_lw
+
+	print(title)
+	print('Mean net RF (W m-2):,%.4e' % rf_net)
+	print('Mean Delta TOA up flux SW (W m-2):,%.4e' % -rf_sw)
+	print('Mean Delta TOA up flux LW (W m-2):,%.4e' % -rf_lw)
+	print('Case,Pressure (Pa),Relative heating rate SW (K day-1),Relative downward diffuse flux SW (W m-2),Relative upward flux SW (W m-2),Relative heating rate LW (K day-1),Relative downward diffuse flux LW (W m-2),Relative upward flux LW (W m-2)')
+	for d_sw, d_sw_cnt, d_lw, d_lw_cnt \
+		in zip(dd_sw, dd_sw_cnt, dd_lw, dd_lw_cnt):
+		name = os.path.basename(d_sw['dirname'])
+		n = len(d_sw['plev_uflx'])
+		for i in range(n):
+			print('%s,%d,%.4e,%.4e,%.4e,%.4e,%.4e,%.4e' % (
+				name,
+				d_sw['plev_uflx'][i],
+				(d_sw['hrts'][i,0,0] - d_sw_cnt['hrts'][i,0,0]) \
+					if i < n - 1 else 0,
+				d_sw['dflx'][i,0,0] - d_sw_cnt['dflx'][i,0,0],
+				d_sw['uflx'][i,0,0] - d_sw_cnt['uflx'][i,0,0],
+				(d_lw['hrts'][i,0,0] - d_lw_cnt['hrts'][i,0,0]) \
+					if i < n - 1 else 0,
+				d_lw['dflx'][i,0,0] - d_lw_cnt['dflx'][i,0,0],
+				d_lw['uflx'][i,0,0] - d_lw_cnt['uflx'][i,0,0],
+			))
+
+	#print('Case,SFC down diffuse SW,SFC down direct SW,TOA up SW,SFC down diffuse LW,TOA up LW,Delta SFC down SW,Delta TOA up SW,Delta SFC down LW,Delta TOA up LW,Delta SFC down net,Delta TOA up net')
+	#for d_sw, d_lw, d_cnt_sw, d_cnt_lw in zip(dd_sw, dd_lw, dd_sw_cnt, dd_lw_cnt):
+	#	print('%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (
+	#		os.path.basename(d_sw['dirname']),
+	#		d_cnt_sw['vflx'][-1,0,0],
+	#		d_cnt_sw['dflx'][-1,0,0],
+	#		d_cnt_sw['uflx'][0,0,0],
+	#		d_cnt_lw['dflx'][-1,0,0],
+	#		d_cnt_lw['uflx'][0,0,0],
+	#		d_sw['dflx'][-1,0,0] - d_cnt_sw['dflx'][-1,0,0],
+	#		d_sw['uflx'][0,0,0] - d_cnt_sw['uflx'][0,0,0],
+	#		d_lw['dflx'][-1,0,0] - d_cnt_lw['dflx'][-1,0,0],
+	#		d_lw['uflx'][0,0,0] - d_cnt_lw['uflx'][0,0,0],
+	#		d_sw['dflx'][-1,0,0] - d_cnt_sw['dflx'][-1,0,0] + d_lw['dflx'][-1,0,0] - d_cnt_lw['dflx'][-1,0,0],
+	#		d_sw['uflx'][0,0,0] - d_cnt_sw['uflx'][0,0,0] + d_lw['uflx'][0,0,0] - d_cnt_lw['uflx'][0,0,0],
+	#	))
+
+	plt.subplots_adjust(hspace=0.35, wspace=0.3)
+	plt.suptitle('Radiative transfer profile: %s' % title)
+	print('-> ' + output, file=sys.stderr)
+	plt.savefig(output, bbox_inches='tight')

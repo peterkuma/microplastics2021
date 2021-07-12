@@ -1,0 +1,33 @@
+#!/bin/sh
+if [ $# != 1 ]; then
+	cat <<EOF
+Run Cscatter_average to calculate optical properties of a given constituent
+averaged on model spectral bands. The output is saved in
+data/cscatter/avg_sw_<type> and data/cscatter/avg_lw_<type>.
+
+Usage: run_cscatter <type>
+
+Arguments:
+
+- type: Type of constituent (one of: "fibers", "fragments", "fragments_fit").
+
+Examples:
+
+Calculate averaged optical properties of fibers.
+
+bin/run_cscatter_average fibers
+
+Calculate averaged optical properties of fragments.
+
+bin/run_cscatter_average fragments
+
+Calculate averaged optical properties of fragments (fit).
+
+bin/run_cscatter_average fragments_fit
+EOF
+	exit 1
+fi
+set -x
+type_="$1"
+Cscatter_average -s data/cscatter/sp_sw -S data/cscatter/lean_12 -P 1 -w -a data/cscatter/avg_sw_"$type_" data/cscatter/opt_prop_"$type_"
+Cscatter_average -s data/cscatter/sp_lw -S data/cscatter/lean_12 -P 1 -w -a data/cscatter/avg_lw_"$type_" data/cscatter/opt_prop_"$type_"

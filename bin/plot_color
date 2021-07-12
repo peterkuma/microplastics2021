@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Plot microplastics color.
+
+Usage: plot_color <input>... <output>
+
+Arguments:
+
+- input: Input file (CSV).
+- output: Output plot file (PDF).
+
+Example:
+
+Plot microplastics color from source files in data/color.
+
+bin/plot_color data/color/*.csv 'plot/Microplastics colour.pdf'
+"""
+
+import sys
+import os
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.lines as mlines
+import seaborn as sns #see http://seaborn.pydata.org/tutorial/color_palettes.html
+
+JOIN = {
+	'Red': ['red',  'wine-red', 'pink', 'purple', 'red-pink', 'brown red', 'brown', 'brown red orange', 'red orange', 'rose', 'light purple', 'red pink', 'wine red', 'lila', 'orange', 'light brown'],
+	'White': ['white', 'transparent', 'white transparent', 'white grey'],
+	'Blue': ['blue', 'blue green', 'light blue', 'white blue', 'dark blue', 'dark blue black', 'darkblue', 'darkblue black', 'blue grey', 'blue purple', 'dark blue – grey', 'dark blue grey', 'ligth blue', 'turquios'],
+	'Black': ['black', 'grey', 'black grey', 'black-white', 'black white'],
+	'Yellow': ['yellow', 'yellow orange', 'yellow brown', 'yellow red'],
+	'Green': ['green', 'lime green', 'lime green blue'],
+}
+
+def translate(color):
+	for k, v in JOIN.items():
+		if color in v:
+			return k
+	return color
+
+if __name__ == '__main__':
+	if len(sys.argv) < 3:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = sys.argv[1:-1]
+	output = sys.argv[-1]
+
+	mpl.rc('font', family='Public Sans', size=7)
+	mpl.rc('axes', linewidth=0.3)
+	mpl.rc('axes', grid=True)
+	mpl.rc('lines', linewidth=1)
+	mpl.rc('xtick.major', width=0.3)
+	mpl.rc('ytick.major', width=0.3)
+	mpl.rc('legend', framealpha=1)
+	mpl.rc('legend', facecolor='#eeeeee')
+	mpl.rc('legend', edgecolor='none')
+	mpl.rc('legend', fancybox=False)
+	mpl.rc('legend', fontsize=7)
+	mpl.rc('grid', color='k')
+	mpl.rc('grid', alpha=0.2)
+	mpl.rc('grid', lw=0.1)
+
+	dd = []
+	for filename in input_:
+		name = os.path.basename(filename)[3:-4].replace('_', ' ').strip()
+		colors = []
+		counts = []
+		total = None
+		with open(filename) as f:
+			reader = csv.reader(f)
+			header = None
+			for r in reader:
+				if header is None:
+					header = r
+					continue
+				if r[0] == 'total':
+					total = float(r[1])
+					continue
+				colors += [translate(r[0].lower().replace('/', '-').replace('-', ' '))]
+				counts += [float(r[1])]
+		dd += [{
+			'name': name,
+			'total': total,
+			'colors': np.array(colors),
+			'counts': np.array(counts),
+		}]
+
+	for d in dd:
+		colors = np.array(list((set(d['colors']))))
+		m = len(colors)
+		counts = np.full(m, np.nan, np.float64)
+		for i, c in enumerate(colors):
+			mask = d['colors'] == c
+			counts[i] = np.sum(d['counts'][mask])
+		d['colors'] = colors
+		d['counts'] = counts
+
+	for d in dd:
+		if d['total'] is not None:
+			d['counts'] *= 100./d['total']
+		else:
+			d['counts'] *= 100./np.sum(d['counts'])
+
+	colors = set()
+	for d in dd:
+		colors |= set(d['colors'])
+
+	colors = list(colors)
+	colors.sort()
+	n = len(colors)
+
+	avg = np.zeros(n, np.float64)
+	for i, c in enumerate(colors):
+		avg[i] = np.median([
+			d['counts'][list(d['colors']).index(c)]
+			for d in dd
+			if c in d['colors']
+		])
+
+	plt.figure(figsize=(6, 5))
+	cmap = sns.color_palette('colorblind', 8)
+
+	for k, d in enumerate(dd):
+		jj = [list(colors).index(c) for c in d['colors']]
+		plt.scatter(jj, d['counts'],
+			color=cmap[k],
+			label=d['name'],
+			edgecolor='none',
+			s=30,
+		)
+
+	plt.gca().set_yticks(np.arange(0, 110, 10))
+	plt.gca().set_xticks(np.arange(n))
+	plt.gca().set_xticklabels(colors)
+
+	plt.ylim(0, 100)
+	plt.ylabel('Relative occurrence (%)')
+	plt.legend(handletextpad=0, fontsize=7)
+	plt.savefig(output, bbox_inches='tight')

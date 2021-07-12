@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Plot particle size distribution.
+
+Usage: plot_size_dist <input>... <output> <title> <max_x>
+
+Arguments:
+
+- input: Input file (NetCDF).
+- output: Output file (PDF).
+- title: Plot title.
+- max_x: Upper size limit (um).
+
+Examples:
+
+Plot size distribution of fibers and fragments from source files in
+data/size_dist.
+
+bin/plot_size_dist data/size_dist/fibers/*.nc 'plot/Microplastics size distribution fibers.pdf' fibers 4000
+bin/plot_size_dist data/size_dist/fragments/*.nc 'plot/Microplastics size distribution fragments.pdf' fragments 400
+"""
+
+import sys
+import os
+import numpy as np
+import ds_format as ds
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns #see http://seaborn.pydata.org/tutorial/color_palettes.html
+
+my_cmap = sns.color_palette('colorblind', 9)
+my_cmap[7] = 'gray'
+my_cmap[8] = 'sandybrown'
+
+if __name__ == '__main__':
+	mpl.rc('font', family='Public Sans', size=7)
+	mpl.rc('axes', linewidth=0.3)
+	mpl.rc('axes', grid=True)
+	mpl.rc('lines', linewidth=1)
+	mpl.rc('xtick.major', width=0.3)
+	mpl.rc('ytick.major', width=0.3)
+	mpl.rc('legend', framealpha=1)
+	mpl.rc('legend', facecolor='#eeeeee')
+	mpl.rc('legend', edgecolor='none')
+	mpl.rc('legend', fancybox=False)
+	mpl.rc('legend', fontsize=7)
+	mpl.rc('grid', color='k')
+	mpl.rc('grid', alpha=0.2)
+	mpl.rc('grid', lw=0.1)
+	if len(sys.argv) < 4:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = sys.argv[1:-3]
+	output = sys.argv[-3]
+	title = sys.argv[-2]
+	max_x = float(sys.argv[-1])
+
+	plt.figure(figsize=(6,3))
+	m = 0.
+	for i, filename in enumerate(input_):
+		name = os.path.basename(filename)[3:-3].replace('_', ' ').strip()
+		d = ds.read(filename)
+		bin_size = np.diff(d['s_bnds']*1e3)
+		norm = np.sum(np.where( \
+			np.isfinite(bin_size), bin_size, 0.)*d['n'])
+		n = d['n']/norm*100.
+		m = max(m, np.amax(n))
+		if i == 0:
+			color = 'k'
+			zorder = 100
+		else:
+			color = my_cmap[i]
+			zorder = 0
+		plt.plot(d['s']*1e6, n, label=name, color=color, zorder=zorder)
+		a=d['s']*1e6
+		a.dump('length_outfile')
+		n.dump('occurrence_outfile')
+
+	#plt.xlabel(r'Length $(\mathrm{\mu m}$)')
+	#plt.xlabel(r'Diameter $(\mathrm{\mu m}$)')
+	plt.xlabel(r'Size $(\mathrm{\mu m}$)')
+
+	plt.ylabel('Occurrence (%/mm)')
+	plt.legend()
+	plt.xlim([0, max_x])
+	plt.ylim([0, m])
+	plt.savefig(output, bbox_inches='tight')

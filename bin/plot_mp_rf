@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Plot microplastics radiative forcing.
+
+Usage: plot_mp_rf <output>
+
+Arguments:
+
+- output: Output plot (PDF).
+
+Examples:
+
+bin/plot_mp_rf 'plot/Microplastics RF.pdf'
+
+Created: Mon Jun 21 10:04:45 2021
+Author: Laura Revell
+"""
+
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 9})
+from matplotlib.ticker import (MultipleLocator)
+barWidth = 0.5
+import matplotlib.gridspec as gridspec
+
+if len(sys.argv) != 2:
+    sys.stderr.write(sys.modules[__name__].__doc__)
+    sys.exit(1)
+
+output = sys.argv[1]
+
+# Here using data from Table 8.4 of IPCC AR5 Chapter 8
+# Sulfate aerosol: -0.4 (-0.6 to -0.2)
+# Black carbon from FF & biofuel: 0.4 (+0.05 to 0.8)
+# Primary organic aerosol from FF & BF: -0.09 (-0.16 to -0.03)
+# Biomass burning: -0.0 (-0.2 to 0.2)
+# Secondary organic aerosol: -0.03 (-0.27 to 0.2)
+# Nitrate: -0.11 (-0.3 to -0.03)
+# Dust: -0.1 (-0.3 to +0.1)
+bars1 = [-0.4,0.4,-0.09,0.0,-0.03,-0.11,-0.1]
+yer1 = [0.2,0.38,0.07,0.2,0.23,0.14,0.2]
+r1 = np.arange(len(bars1))
+
+#Plot MP RF as follows:
+#Values are obtained by running bin/confidence_intervals
+
+#fragment SW CI (5-95%): 0.1826; LW CI: 0.1859
+gmean_sw_fra = -0.1826; gmean_lw_fra = 0.1643
+gmean_net_fra = -0.0183; gstd_fra = .06245
+
+#fibers
+gmean_sw_fib = -0.2682; gmean_lw_fib = 0.2294;
+gmean_net_fib = -0.0388; gstd_fib = 0.052
+
+#combined fragments + fibers (total/net)
+gmean_sw_tot = -0.2325; gmean_lw_tot = 0.2369
+gmean_net_tot = 0.0044; gstd_tot = 0.0399
+
+#boundary layer
+gmean_sw_bl = -0.0811; gmean_lw_bl = 0.0066;
+gmean_net_bl = -0.0746; gstd_bl = 0.05525
+
+#combine MPs data for plotting
+bars2 = [gmean_lw_fra,gmean_lw_fib,gmean_lw_tot,gmean_lw_bl]
+bars3 = [gmean_sw_fra,gmean_sw_fib,gmean_sw_tot,gmean_sw_bl]
+bars4 = [gmean_net_fra,gmean_net_fib,gmean_net_tot,gmean_net_bl] #net RF for fragments and fibres
+
+yer4 = [gstd_fra,gstd_fib,gstd_tot,gstd_bl]
+r4 = [7,8,9,10]
+
+# The x position of bars
+zeroes = (0,0)
+
+lw_scm = (0.184,0.296,0.244,0.014)
+sw_scm = (-0.2,-0.325,-0.284,-0.046)
+net_scm = (-0.016,-0.029,-0.04,-0.032)
+yer_scm = (0.089,0.135,0.123,0.024)
+
+cm = 1/2.54 #cm in inches
+fig=plt.figure(figsize=(12*cm,18*cm))
+gs1 = gridspec.GridSpec(2,1)
+gs1.update(wspace=0.2, hspace=.2) # set the spacing between axes.
+
+barWidth=0.5
+ax = plt.subplot(gs1[0])
+z = (r1[0]-0.5,r4[-1]+0.5)
+plt.plot(z,zeroes,linestyle='--',color='k')
+plt.bar(r1, bars1, width = barWidth, color = 'darkgrey', edgecolor = 'none',label='RF, IPCC AR5')
+plt.errorbar(r1,bars1,yerr=yer1, fmt='o',capsize=5,color='k',linewidth=1)
+plt.bar(r4, bars4, width = barWidth, color = 'black', edgecolor = 'none',label='ERF, this study')
+plt.errorbar(r4,bars4,yerr=yer4, fmt='o',capsize=5,color='dimgray',linewidth=1)
+plt.xticks([r for r in range(11)],['Sulfate\naerosol','Black\ncarbon',
+            'POA','Biomass\nburning','SOA','Nitrate','Dust',
+            'Fragments','Fibres',
+            'Fibres+\nFragments\n(Combined)','      Boundary\n  layer'],FontSize=5)
+ax.set_xlim(r1[0]-0.5,r4[-1]+0.5)
+ax.set_ylim(-0.65,0.8)
+ax.yaxis.set_major_locator(MultipleLocator(0.2))
+ax.yaxis.set_minor_locator(MultipleLocator(0.05))
+plt.ylabel('Radiative forcing (W m$^{-2}$)',fontsize=9)
+plt.title('a',loc='left')
+plt.legend(fontsize=5, frameon=False)
+
+
+r2 = (1,3,5,7)
+r3 = (1.5,3.5,5.5,7.5)
+z = (r2[0]-0.5,r3[-1]+0.5)
+ax = plt.subplot(gs1[1])
+barWidth=0.5
+bw=0.2
+plt.plot(z,zeroes,linestyle='--',color='k')
+
+plt.bar(r2, bars2, width = bw, color = 'firebrick', edgecolor = 'none',label='Longwave')
+plt.bar(r2, bars3, width = bw, color = 'cornflowerblue', edgecolor = 'none',label='Shortwave')
+plt.bar(r2, bars4, width = barWidth, color = 'black', edgecolor = 'none',label='Net ERF')
+plt.bar(r3, lw_scm, width = bw, color = 'darksalmon', edgecolor = 'none',label='Longwave')
+plt.bar(r3, sw_scm, width = bw, color = 'lightblue', edgecolor = 'none',label='Shortwave')
+plt.bar(r3, net_scm, width = barWidth, color = 'dimgray', edgecolor = 'none',label='Net RF')
+plt.errorbar(r2,bars4,yerr=yer4, fmt='o',capsize=5,color='dimgray',linewidth=1)
+plt.errorbar(r3,net_scm,yerr=yer_scm, fmt='o',capsize=5,color='black',linewidth=1)
+
+r4 = (1.25,3.25,5.25,7.25)
+plt.xticks([r for r in r4],['Microplastic \nfragments: \n100 MP m$^{-3}$','Microplastic \nfibres: \n100 MP m$^{-3}$',
+            'Microplastics \ncombined: \n100 MP m$^{-3}$','Microplastics \nboundary layer: \n100 MP m$^{-3}$'],FontSize=5)
+plt.ylabel('Radiative forcing (W m$^{-2}$)',fontsize=9)
+ax.set_xlim(r2[0]-0.5,r3[-1]+0.5)
+ax.set_ylim(-0.33,0.32)
+ax.yaxis.set_major_locator(MultipleLocator(0.1))
+ax.yaxis.set_minor_locator(MultipleLocator(0.01))
+plt.title('b',loc='left')
+plt.legend(loc='upper left', ncol=2, frameon=False, shadow=False, labelspacing=.1, fontsize=5)
+
+plt.savefig(output, bbox_inches='tight')

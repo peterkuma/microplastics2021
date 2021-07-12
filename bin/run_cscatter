@@ -1,0 +1,27 @@
+#!/bin/sh
+if [ $# != 1 ]; then
+	cat <<EOF
+Run Cscatter to calculate optical properties of a given constituent.
+The output is saved in data/cscatter/opt_prop_<type>.
+
+Usage: run_cscatter <type>
+
+Arguments:
+
+- type: Type of constituent (one of: "fragments", "fragments_fit")
+
+Examples:
+
+Calculate optical properties of fragments.
+
+bin/run_cscatter fragments
+
+Calculate optical properties of fragments (fit).
+
+bin/run_cscatter fragments_fit
+EOF
+	exit 1
+fi
+set -x
+type_="$1"
+Cscatter -w data/cscatter/wavelength -r data/cscatter/refract -l -t 0 -M -m 1 2 15e-6 1 -n 1 -P 1 -o data/cscatter/opt_prop_"$type_" -v

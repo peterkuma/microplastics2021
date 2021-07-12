@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Plot fiber diameter-to-length ratio.
+
+Usage: plot_fibers <input> <output>
+
+Arguments:
+
+- input: Input file (CSV).
+- output: Output plot file (PDF).
+
+Examples:
+
+bin/plot_fibers data/fibers/bergmann2019.csv 'plot/Fibers aspect ratio.pdf'
+"""
+
+import sys
+import os
+import csv
+import numpy as np
+import scipy.optimize
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+if __name__ == '__main__':
+	if len(sys.argv) != 3:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = sys.argv[1]
+	output = sys.argv[2]
+
+	name = os.path.basename(input_)[:-4].replace('_', ' ').strip()
+
+	length = []
+	diameter = []
+
+	with open(input_) as f:
+		reader = csv.reader(f)
+		header = None
+		for r in reader:
+			if header is None:
+				header = r
+				continue
+			length += [float(r[0])]
+			diameter += [float(r[1])]
+
+	length = np.array(length, np.float64)
+	diameter = np.array(diameter, np.float64)
+
+	mask = length <= 4000
+	length = length[mask]
+	diameter = diameter[mask]
+
+	mpl.rc('font', family='Public Sans', size=7)
+	mpl.rc('axes', linewidth=0.3)
+	mpl.rc('axes', grid=True)
+	mpl.rc('lines', linewidth=2)
+	mpl.rc('xtick.major', width=0.3)
+	mpl.rc('ytick.major', width=0.3)
+	mpl.rc('legend', framealpha=1)
+	mpl.rc('legend', facecolor='#eeeeee')
+	mpl.rc('legend', edgecolor='none')
+	mpl.rc('legend', fancybox=False)
+	mpl.rc('legend', fontsize=7)
+	mpl.rc('grid', color='k')
+	mpl.rc('grid', alpha=0.2)
+	mpl.rc('grid', lw=0.1)
+
+	plt.scatter(length, diameter,
+		s=1,
+		label=name,
+	)
+
+	def f(x):
+		return np.sum((diameter - x[0]*np.log(1 + length/x[1]))**2)
+
+	res = scipy.optimize.minimize(f, [20., 1000.])
+	print(res['x'])
+
+	res['x'] = np.round(res['x'])
+	x = np.arange(0, 6001, 1)
+	plt.plot(x, res['x'][0]*np.log(1 + x/res['x'][1]),
+		color='k',
+		lw=1,
+	)
+
+	plt.text(0.98, 0.03, '$D = %dlog(1 + L/%d)$' % (res['x'][0], res['x'][1]),
+		transform=plt.gca().transAxes,
+		verticalalignment='bottom',
+		horizontalalignment='right',
+		bbox=dict(facecolor='#eeeeee', edgecolor='none')
+	)
+
+	plt.xlim(0, 4000)
+	plt.ylim(0, 50)
+	plt.xlabel(r'Length $(\mathrm{\mu m}$)')
+	plt.ylabel(r'Diameter $(\mathrm{\mu m}$)')
+	plt.title('Aspect ratio of fibres identified in European and Arctic snow [4]', fontsize=7)
+	plt.savefig(output, bbox_inches='tight')

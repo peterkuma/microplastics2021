@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Convert CIRC level_input_case<i>.txt file to NetCDF.
+
+Usage: convert_circ_levels <input> <output>
+
+Arguments:
+
+- input: Input file (txt). This should be the `level_input_case<n>.txt` file.
+- output: Output file (NetCDF).
+
+Examples:
+
+Convert CIRC case levels to NetCDF.
+
+for i in {1..7}; do bin/convert_circ_levels data/circ/case"$i"/level_input_case"$i".txt data/circ/case"$i"/level_input_case"$i".nc; done
+"""
+
+import sys
+import pandas as pd
+import ds_format as ds
+
+if __name__ == '__main__':
+	if len(sys.argv) != 3:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = sys.argv[1]
+	output = sys.argv[2]
+
+	df = pd.read_csv(input_, sep='\\s+')
+
+	ds.write(output, {
+		'phalf': df['p(mb)']*1e2,
+		'zhalf': df['z(km)']*1e3,
+		'ta': df['T(K)'],
+		'.': {
+			'phalf': {'.dims': ['phalf'], 'title': 'pressure', 'units': 'Pa'},
+			'zhalf': {'.dims': ['phalf'], 'title': 'height', 'units': 'm'},
+			'ta': {'.dims': ['phalf'], 'title': 'temperature', 'units': 'K'},
+		}
+	})

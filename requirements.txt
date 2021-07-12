@@ -1,0 +1,8 @@
+numpy==1.20.1
+scipy==1.6.1
+matplotlib==3.3.4
+https://github.com/matplotlib/basemap/archive/refs/tags/v1.2.2rel.tar.gz
+cartopy==0.18.0
+pst-format==1.1.1
+aquarius-time==0.1.0
+ds-format==1.1.0

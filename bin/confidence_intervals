@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Calculate and print confidence intervals from yearly HadGEM3 model output
+files.
+
+Usage: confidence_intervals <input>
+
+Arguments:
+
+- input: Input yearly files (NetCDF). The files should contain rsut_cs2,
+  rlut_cs2, lat and lon variables.
+"""
+
+import sys
+import re
+import numpy as np
+import scipy.stats
+import datetime as dt
+import ds_format as ds
+
+def gmean(x, lat, lon):
+	return np.average(
+		np.mean(x, axis=1),
+		weights=np.cos(lat/180.*np.pi)
+	)
+
+def calc_ts(y, x, **kwargs):
+	n = len(x)
+	err = scipy.stats.t.isf((100-90)/100., n - 1, 0,
+		np.std(x)/np.sqrt(n))
+	print('%.4f %.4f %.4f' % (-np.mean(x) + err, -np.mean(x), -np.mean(x) - err))
+
+if __name__ == '__main__':
+	if len(sys.argv) < 4:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+
+	input_ = sys.argv[1:]
+
+	dd = []
+	for filename in input_:
+		m = re.match(r'.*(?P<year>\d\d\d\d)\.nc', filename)
+		year = int(m.groupdict()['year'])
+		d = ds.read(filename)
+		d['year'] = year
+		dd += [d]
+
+	y = [dt.datetime(d['year'], 1, 1) for d in dd]
+	n = len(y)
+	rsut_cs2 = np.array([
+		gmean(d['rsut_cs2'], d['lat'], d['lon'])
+		for d in dd
+	])
+	rlut_cs2 = np.array([
+		gmean(d['rlut_cs2'], d['lat'], d['lon'])
+		for d in dd
+	])
+	total = rsut_cs2 + rlut_cs2
+
+	print('SW forcing is (low, mean, high):')
+	calc_ts(y, rsut_cs2)
+	print('LW forcing is (low, mean, high):')
+	calc_ts(y, rlut_cs2)
+	print('Net forcing is, low(5%), mean, high(95%):')
+	calc_ts(y, total)

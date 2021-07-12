@@ -1,0 +1,6 @@
+black 30
+blue 15
+green 5
+red 25
+white 15
+yellow 10

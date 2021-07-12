@@ -1,0 +1,28 @@
+*FILE TYPE =     8
+
+Scattering properties averaged across each band
+
+   Block =     1
+   Type of scatterer =     0   Unassigned          
+
+   Number density   =  9.99828E-01 m-3:
+   Character. Dim.  =  6.00015E-05 m:
+   Volume fraction  =  3.39286E-13
+
+Band        Absorption          Scattering          Phase fnc.
+              (m-1)               (m-1)   
+    1     1.337823782E-11     8.551916737E-09     7.948215113E-01
+
+    2     1.007738637E-11     8.579923192E-09     8.033481117E-01
+
+    3     1.189494740E-11     8.602865909E-09     8.065897195E-01
+
+    4     2.952981410E-11     8.627462569E-09     8.074562551E-01
+
+    5     1.749601448E-10     8.561826098E-09     8.088083007E-01
+
+    6     1.298743914E-09     7.607613980E-09     8.336195841E-01
+
+
+
+

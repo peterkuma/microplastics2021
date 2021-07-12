@@ -1,0 +1,9 @@
+The numbers below represent (in order):
+Number of levels
+Surface temperature
+Solar Zenith angle
+Incoming broadband solar irradiance for the specific case
+      55
+    308.71
+     64.65
+  566.9523

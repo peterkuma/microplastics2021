@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Plot microplastics shape distribution.
+
+Usage: plot_morphotype <input> <output>
+
+Arguments:
+
+- input: Input file (CSV).
+- output: Output plot file (PDF).
+
+Examples:
+
+Plot microplastics shape from a source CSV file data/morphotype/morphotype.csv.
+
+bin/plot_morphotype data/morphotype/morphotype.csv 'plot/Microplastics morphotype.pdf'
+"""
+
+import sys
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import seaborn as sns #see http://seaborn.pydata.org/tutorial/color_palettes.html
+
+my_cmap = sns.color_palette('colorblind', 8)
+my_cmap[6] = 'gray'
+my_cmap[7] = 'sandybrown'
+
+if __name__ == '__main__':
+	if len(sys.argv) != 3:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+
+	input_ = sys.argv[1]
+	output = sys.argv[2]
+
+	mpl.rc('font', family='Public Sans', size=7)
+	mpl.rc('axes', linewidth=0.3)
+	mpl.rc('axes', grid=True)
+	mpl.rc('lines', linewidth=1)
+	mpl.rc('xtick.major', width=0.3)
+	mpl.rc('ytick.major', width=0.3)
+	mpl.rc('legend', framealpha=1)
+	mpl.rc('legend', facecolor='#eeeeee')
+	mpl.rc('legend', edgecolor='none')
+	mpl.rc('legend', fancybox=False)
+	mpl.rc('legend', fontsize=7)
+	mpl.rc('grid', color='k')
+	mpl.rc('grid', alpha=0.2)
+	mpl.rc('grid', lw=0.1)
+
+	fibers = []
+	fragments = []
+	films = []
+	labels = []
+
+	with open(input_) as f:
+		reader = csv.DictReader(f)
+		for r in reader:
+			if r['ignore_shape'] == '1':
+				continue
+			labels += [r['label']]
+			fibers += [
+				r['fibers_fract']
+				if r['fibers_fract'] != ''
+				else np.nan
+			]
+			y = np.nan
+			for x in [
+				'fragments',
+				'granules',
+				'spheres',
+				'microbeads',
+				'foam',
+				'pellets',
+			]:
+				name = x + '_fract'
+				z = float(r[name]) \
+					if r[name] != '' \
+					else np.nan
+				if not np.isnan(z):
+					if np.isnan(y):
+						y = z
+					else:
+						y += z
+			fragments += [y]
+			films += [
+				r['films_fract']
+				if r['films_fract'] != ''
+				else np.nan
+			]
+
+	fibers = np.array(fibers, np.float64)
+	fragments = np.array(fragments, np.float64)
+	films = np.array(films, np.float64)
+
+	n = len(labels)
+
+	names = ['Fibres', 'Fragments', 'Films']
+
+	fibers_avg = np.nanmedian(fibers)
+	fragments_avg = np.nanmedian(fragments)
+	films_avg = np.nanmedian(films)
+
+	plt.figure(figsize=(5,5))
+	cmap = my_cmap
+	for i in range(n):
+		plt.scatter(
+			[0, 1, 2], [fibers[i], fragments[i], films[i]],
+			label=labels[i],
+			color=cmap[i],
+			edgecolor='none',
+			s=30,
+		)
+	plt.scatter([0, 1, 2], [fibers_avg, fragments_avg, films_avg],
+		color='none',
+		label='median',
+		edgecolor='k',
+		s=40,
+		lw=0.6,
+	)
+
+	plt.gca().set_yticks(np.arange(0, 110, 10))
+	plt.gca().set_xticks(np.arange(3))
+	plt.gca().set_xticklabels(names)
+	plt.ylim(0, 100)
+	plt.legend(handletextpad=0, fontsize=7)
+	plt.ylabel('Relative occurrence (%)')
+	plt.savefig(output, bbox_inches='tight')

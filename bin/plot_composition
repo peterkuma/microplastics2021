@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Plot microplastics composition.
+
+Usage: plot_composition <input> <output> <title>
+
+Arguments:
+
+- input: Input file (CSV).
+- output: Output plot file (PDF).
+- title: Plot title.
+
+Examples:
+
+Plot composition of fibers and fragments from source files in data/composition.
+
+bin/plot_composition data/composition/fibers.csv 'plot/Microplastics composition fibers.pdf' fibers
+bin/plot_composition data/composition/fragments.csv 'plot/Microplastics composition fragments.pdf' fragments
+"""
+
+import sys
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.lines as mlines
+import seaborn as sns #see http://seaborn.pydata.org/tutorial/color_palettes.html
+
+JOIN = [
+	['PA', 'NY'],
+	['PES', 'PET'],
+	['ACR', 'PAN', 'PMA'],
+	['RES', 'EP', 'PHE', 'ALK'],
+	['PE-PP', 'PE', 'PP'],
+]
+
+if __name__ == '__main__':
+	if len(sys.argv) != 4:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = sys.argv[1]
+	output = sys.argv[2]
+	title = sys.argv[3]
+
+	mpl.rc('font', family='Public Sans', size=7)
+	mpl.rc('axes', linewidth=0.3)
+	mpl.rc('axes', grid=True)
+	mpl.rc('lines', linewidth=1)
+	mpl.rc('xtick.major', width=0.3)
+	mpl.rc('ytick.major', width=0.3)
+	mpl.rc('legend', framealpha=1)
+	mpl.rc('legend', facecolor='#eeeeee')
+	mpl.rc('legend', edgecolor='none')
+	mpl.rc('legend', fancybox=False)
+	mpl.rc('legend', fontsize=7)
+	mpl.rc('grid', color='k')
+	mpl.rc('grid', alpha=0.2)
+	mpl.rc('grid', lw=0.1)
+
+	with open(input_) as f:
+		reader = csv.reader(f)
+		labels = None
+		types = []
+		type_names = []
+		vals = []
+		for r in reader:
+			if labels is None:
+				labels = r[2:]
+				continue
+			types += [r[0]]
+			vals += [[float(x) if x != '' else np.nan for x in r[2:]]]
+	vals = np.array(vals, np.float64)
+	totals = vals[-1,:]
+	types = np.array(types)[:-1]
+	vals = vals[:-1,:]
+	n, m = vals.shape
+	for i in range(m):
+		vals[:,i] /= totals[i]
+	vals *= 100.
+
+	delete = []
+	for x in JOIN:
+		k = None
+		for i in range(n):
+			if types[i] == x[0]:
+				k = i
+				break
+		for type_ in x[1:]:
+			for i in range(n):
+				if types[i] == type_:
+					vals[k,:] = \
+						np.where(np.isnan(vals[k,:]) & np.isnan(vals[i,:]), np.nan, 1.)*(
+							np.where(np.isnan(vals[k,:]), 0., vals[k,:]) + \
+							np.where(np.isnan(vals[i,:]), 0., vals[i,:])
+						)
+					delete += [i]
+	vals = np.delete(vals, delete, axis=0)
+	types = np.delete(types, delete)
+	n, m = vals.shape
+
+	order = np.argsort(types)
+	cmap = sns.color_palette('colorblind', 6)
+
+	plt.figure(figsize=(6, 5))
+
+	for i in range(n):
+		for j in range(m):
+			plt.scatter(i, vals[order[i],j],
+				color=(cmap[j] if j > 0 else 'k'),
+				edgecolor='none',
+				lw=0.6,
+				s=30,
+			)
+	plt.gca().set_yticks(np.arange(0, 110, 10))
+	plt.gca().set_xticks(np.arange(n))
+	plt.gca().set_xticklabels(types[order])
+	plt.legend(handles=([
+		mlines.Line2D([], [],
+			lw=0,
+			markerfacecolor=(cmap[i] if i > 0 else 'k'),
+			markeredgecolor='none',
+			marker='o',
+			markersize=4,
+			label=labels[i]
+		) for i in range(m)]
+	), handletextpad=0, fontsize=7)
+	plt.ylim(0, 100)
+	plt.title('b', loc='left', fontweight='bold', fontsize=8)
+	plt.ylabel('Relative occurrence (%)', fontsize=7)
+	plt.savefig(output, bbox_inches='tight')

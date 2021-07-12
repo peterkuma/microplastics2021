@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Convert size distribution CSV file to NetCDF.
+
+Usage: convert_size_dist <input> <output>
+
+Arguments:
+
+- input: Input file (CSV).
+- output: Output file (NetCDF).
+
+Examples:
+
+Convert size distribution in allen2019_fibers.csv to allen2019_fibers.nc.
+
+bin/convert_size_dist data/size_dist/allen2019_fibers.{csv,nc}
+"""
+
+import sys
+import csv
+import numpy as np
+import ds_format as ds
+
+META = {
+	's': {
+		'.dims': ['s'],
+		'long_name': 'size',
+		'units': 'm',
+	},
+	's_bnds': {
+		'.dims': ['s_bnds'],
+		'long_name': 'size_bounds',
+		'units': 'm',
+	},
+	'n': {
+		'.dims': ['s'],
+		'long_name': 'number of particles',
+		'units': '1',
+	}
+}
+
+if __name__ == '__main__':
+	if len(sys.argv) != 3:
+		sys.stderr.write(sys.modules[__name__].__doc__)
+		sys.exit(1)
+	input_ = sys.argv[1]
+	output = sys.argv[2]
+	d = {
+		's': [],
+		's_bnds': [],
+		'n': [],
+		'.': META
+	}
+	with open(input_) as f:
+		reader = csv.reader(f)
+		for r in reader:
+			if len(d['s_bnds']) > 0:
+				d['n'] += [float(r[1])]
+			d['s_bnds'] += [float(r[0])*1e-6]
+	d['s_bnds'] = np.array(d['s_bnds'], np.float64)
+	d['n'] = np.array(d['n'], np.float64)
+	d['s'] = (d['s_bnds'][1:] + d['s_bnds'][:-1])*0.5
+	ds.write(output, d)

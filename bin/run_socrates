@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+if [ $# != 2 ]; then
+	cat <<EOF
+Run SOCRATES on CIRC case.
+
+Usage: $0 <dir> <n>
+
+Arguments:
+
+- dir: Directory with the CIRC case.
+- n: Case number.
+
+Examples:
+
+Run SOCRATES for the 7 CIRC cases.
+
+for i in {1..7}; do echo "\$i"; bin/run_socrates data/circ/case"\$i" "\$i"; done
+EOF
+	exit 1
+fi
+dir="$1"
+n="$2"
+
+cd "$dir"
+
+if [ ! -e case"$n".t ]; then
+	print "Invalid directory"
+	exit 1
+fi
+
+for type_ in cnt fragments fibers fibers_and_fragments fibers_and_fragments_2km; do
+	if [ "$type_" != cnt ]; then
+		cp case"$n"."$type_".nc case"$n".mp
+		cp ../common/sp_{sw,lw}_ga7_"$type_" .
+		cp ../common/sp_sw_ga7_k sp_sw_ga7_"$type_"_k
+		cp ../common/sp_lw_ga7_k sp_lw_ga7_"$type_"_k
+		sp_sw=sp_sw_ga7_"$type_"
+		sp_lw=sp_lw_ga7_"$type_"
+	else
+		cp ../common/sp_{sw,lw}_ga7{,_k} .
+		sp_sw=sp_sw_ga7
+		sp_lw=sp_lw_ga7
+	fi
+	rm -f case"$n"*flx case"$n"*hrts
+	cp case"$n".surfsw_hadgem case"$n".surf
+	Cl_run_cdf -B case"$n" -s "$sp_sw" -R 1 6 -S +R -g 2 -c -r -a +A -C 2 -K 1 -d 5 -i 8 -z 1
+	for f in case"$n"*.*flx case"$n"*.hrts; do cp "$f" "case"$n"_sw_"$type_"${f#case$n}".nc; done
+	rm -f case"$n"*flx case"$n"*hrts
+	cp case"$n".surflw case"$n".surf
+	Cl_run_cdf -B case"$n" -s "$sp_lw" -R 1 9 -I -g 4 -c -C 2 -K 1 -d 5 -i 8 -z 1 -a
+	for f in case"$n"*.*flx case"$n"*.hrts; do cp "$f" "case"$n"_lw_"$type_"${f#case$n}".nc; done
+done

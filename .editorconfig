@@ -1,0 +1,23 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[bin/*]
+charset = utf-8
+indent_style = tab
+indent_size = 4
+
+[bin/{plot_abs_sca,plot_map,plot_mp_rf}]
+indent_style = space
+
+[data/ea/*.py]
+charset = utf-8
+indent_style = tab
+indent_size = 4
+
+[fibre_optical_property_scripts/*]
+charset = utf-8
+indent_style = space
+indent_size = 4
