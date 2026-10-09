@@ -1,4 +1,4 @@
-# Direct radiative effects of airborne microplastics
+# Code and data for the paper “Direct radiative effects of airborne microplastics”
 
 **Authors:** Laura E. Revell<sup>1</sup>, Peter Kuma<sup>1,*</sup>,
 Eric C. Le Ru<sup>2</sup>, Walter R. C. Somerville<sup>2</sup>,
@@ -12,8 +12,8 @@ Wellington 6140, New Zealand.\
 <sup>*</sup>Now at: Department of Meteorology, Stockholm University, Stockholm
 SE-106 91, Sweden.
 
-This repository contains programs and data accompanying the paper by
-Revell et al. (2021), "Direct radiative effects of airborne microplastics".
+This repository contains code and data for the paper [Direct radiative effects
+of airborne microplastics](https://doi.org/10.1038/s41586-021-03864-x).
 
 ## Requirements
 
